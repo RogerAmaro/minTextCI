@@ -1,4 +1,7 @@
 # obter a get_next page e realimentar (23/4)
+
+# comentario teste
+
 ###problema no selenium (gecko drive precisa ser adcionado ao path)
 import urllib.parse
 from fake_useragent import UserAgent
