@@ -1,8 +1,4 @@
-# obter a get_next page e realimentar (23/4)
 
-/// teste git...
-
-###problema no selenium (gecko drive precisa ser adcionado ao path)
 import urllib.parse
 from fake_useragent import UserAgent
 import math
@@ -212,11 +208,12 @@ def get_text_from_url(url):
     #data = soup.findAll(text=True)
     #text = filter(visible, data)
 
-
-    if text is None :
-        print("URL:{}, possui texto vazio, gravando logFile...".format(url))
-        return log_file(url)
-    return date_of_links((text,url),2)
+    print(text)
+    time.sleep(10)
+    # if text is None :
+    #     print("URL:{}, possui texto vazio, gravando logFile...".format(url))
+    #     return log_file(url)
+    # return date_of_links((text,url),2)
 
 
 def returno_date(name,table=None,path="/home/roger/Documents/Pesquisa/"):
@@ -271,7 +268,7 @@ def date_of_links(dados,table=None):
 
 def google_screper_results(termo_pesq,len):
     links_check=[]
-    i=10
+    i=0
     headers_agent = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
     while True:
         google_url = 'https://www.google.com/search?q={}&&num={}&&hl={}&&start={}&'.format(termo_pesq, 100, len, i)
@@ -295,7 +292,7 @@ def google_screper_results(termo_pesq,len):
 
     
 
-print(google_screper_results("deficiencia+visual+mercado+de+trabalho+acessibilidade+inserção","pt"))
+#print(google_screper_results("deficiencia+visual+mercado+de+trabalho+acessibilidade+inserção","pt"))
 for url in returno_date('date_of_links.db','date_of_links'):
     if not ".pdf" in url[0]:
         print(get_text_from_url(url[0]))
