@@ -1,4 +1,8 @@
-
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter#process_pdf
+from pdfminer.pdfpage import PDFPage
+from pdfminer.converter import TextConverter
+from pdfminer.layout import LAParams
+from io import StringIO
 import urllib.parse
 import math
 import os
@@ -22,6 +26,23 @@ import time
 import subprocess
 
 
+def is_pdf(bsobj):
+    print(bsobj.find_all('p',class_='embed'))
+
+
+
+
+
+def rm():
+    path = "/tmp/"
+    dir = os.listdir(path)
+    for file in dir:
+        if file == "pdffile.pdf":
+            try:
+                os.remove(file)
+            except Exception as e:
+                return e
+    return True
 
 
 def stopWords(path='/home/roger/Documents/Pesquisa/portuguese_stopwords'):
@@ -61,33 +82,32 @@ def wordcloud(text, path):
 
 
 def get_text_from_pdf(url):
-    pages = ""
     path = "/tmp/pdffile.pdf"
+    rm()
     try:
         r = requests.get(url, allow_redirects=True)
     except requests.exceptions.ConnectionError:
         return False
-
     open(path, 'wb').write(r.content)
-
-    pdf_file = open(path, 'rb')
-    read_pdf = pyPdf.PdfFileReader(pdf_file)
-    if read_pdf.isEncrypted:
-        try:
-            read_pdf.decrypt('')
-        except NotImplementedError:
-            return False
-    number_of_pages = read_pdf.getNumPages()
-    for pageNum in range(number_of_pages):
-        page = read_pdf.getPage(pageNum)
-        page_content = page.extractText()
-        pages += page_content
-
-    if pages is None:
-        print("pdf vazio ou ilegivél")
-        return None
-    else:
-        return date_of_links((pages,url),2)
+    # PDFMiner boilerplate
+    rsrcmgr = PDFResourceManager()
+    sio = StringIO()
+    codec = 'utf-8'
+    laparams = LAParams()
+    device = TextConverter(rsrcmgr, sio, codec=codec, laparams=laparams)
+    interpreter = PDFPageInterpreter(rsrcmgr, device)
+    # Extract text
+    fp = open(path, 'rb')
+    for page in PDFPage.get_pages(fp):
+        interpreter.process_page(page)
+    fp.close()
+    # Get text from StringIO
+    text = sio.getvalue()
+    # Cleanup
+    device.close()
+    sio.close()
+    return text
+    # return date_of_links((text,url),2)
 
 
 
@@ -186,11 +206,14 @@ def testeLink(url):
 def get_text_from_url(url):
     headers_agent = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
     soup = BeautifulSoup((urlopen(Request(url, headers=headers_agent)).read()),"html.parser")
-    text = "".join([p.text for p in soup.find_all("p")])
-    if text is None :
-        print("URL:{}, possui texto vazio, gravando logFile...".format(url))
-        log_file(url)
-    return date_of_links((text,url),2)
+    if is_pdf(soup):
+        print("é pdf")
+        # return get_text_from_pdf(url)
+    # text = "".join([p.text for p in soup.find_all("p")])
+    # if text is None :
+    #     print("URL:{}, possui texto vazio, gravando logFile...".format(url))
+    #     log_file(url)
+    # return date_of_links((text,url),2)
 
 
 def returno_date(name,table=None,path="/home/roger/Documents/Pesquisa/"):
@@ -274,7 +297,7 @@ def google_screper_results(termo_pesq,len):
 #     if not ".pdf" in url[0]:
 #         print(get_text_from_url(url[0]))
 #         print("wait for 5 minutes...")
-#         for i in range(300):
+#         for i in range(200):
 #             time.sleep(1)
 #             print("{}: seconds".format(i))
 #
@@ -282,16 +305,13 @@ def google_screper_results(termo_pesq,len):
 #         print("A url {} é PDF".format(url[0]))
 #         try:
 #             print(get_text_from_pdf(url[0]))
-#             break
 #         except Exception as e:
 #             print(e)
-#         print("wait for 5 minutes...")
-#         for i in range(300):
+#         print("wait for 200 minutes...")
+#         for i in range(200):
 #             time.sleep(1)
 #             print("{}: seconds".format(i))
-#
-#
-#
+
+print(get_text_from_url("http://www.unaerp.br/sici-unaerp/edicoes-anteriores/2004/secao-3/836-o-papel-da-tecnologia-assistiva-na-inclusao-digital-dos-portadores-de-deficiencia-visual/file"))
 
 
-print(get_text_from_pdf("http://revistaeletronicardfd.unibrasil.com.br/index.php/rdfd/article/viewFile/187/179"))
