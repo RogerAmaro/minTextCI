@@ -5,6 +5,8 @@ from pdfminer.layout import LAParams
 from io import StringIO
 import urllib.parse
 import math
+import sys
+from datetime import datetime
 import os
 import re
 import sqlite3
@@ -26,13 +28,6 @@ import time
 import subprocess
 
 
-def is_pdf(bsobj):
-    print(bsobj.find_all('p',class_='embed'))
-
-
-
-
-
 def rm():
     path = "/tmp/"
     dir = os.listdir(path)
@@ -43,24 +38,13 @@ def rm():
             except Exception as e:
                 return e
     return True
-
-
 def stopWords(path='/home/roger/Documents/Pesquisa/portuguese_stopwords'):
     arq =(open(path,'r').read()).split("\n")
     return arq
-
-
-
-
-
 def goffmanPoint(rept):
     return round(((-1 + math.sqrt(1 + 8 * rept)) / 2), 0)
-
 def RemoveAccents(data):
     return ''.join(x for x in unicodedata.normalize('NFKD', data) if x in string.ascii_letters).upper()
-
-
-
 def wordcloud(text, path):
     listofwords = []
     with open("/home/pesquisa/Downloads/stopwords.txt") as file:
@@ -77,44 +61,35 @@ def wordcloud(text, path):
     except:
         print("error generating wordcloud")
         return None
-
-
-
-
 def get_text_from_pdf(url):
-    path = "/tmp/pdffile.pdf"
-    rm()
+    pages = ""
+    path = "/home/roger/Documents/Pesquisa/pdfs/file.pdf"
     try:
         r = requests.get(url, allow_redirects=True)
     except requests.exceptions.ConnectionError:
         return False
     open(path, 'wb').write(r.content)
-    # PDFMiner boilerplate
-    rsrcmgr = PDFResourceManager()
-    sio = StringIO()
-    codec = 'utf-8'
-    laparams = LAParams()
-    device = TextConverter(rsrcmgr, sio, codec=codec, laparams=laparams)
-    interpreter = PDFPageInterpreter(rsrcmgr, device)
-    # Extract text
-    fp = open(path, 'rb')
-    for page in PDFPage.get_pages(fp):
-        interpreter.process_page(page)
-    fp.close()
-    # Get text from StringIO
-    text = sio.getvalue()
-    # Cleanup
-    device.close()
-    sio.close()
-    return text
-    # return date_of_links((text,url),2)
+    pdf_file = open(path, 'rb')
+    read_pdf = pyPdf.PdfFileReader(pdf_file)
+    if read_pdf.isEncrypted:
+        try:
+            read_pdf.decrypt('')
+        except NotImplementedError:
+            return log_file(url)
+    number_of_pages = read_pdf.getNumPages()
+    for pageNum in range(number_of_pages):
+        page = read_pdf.getPage(pageNum)
+        page_content = page.extractText()
+        pages += page_content
+    if len(pages)<60:
+        return log_file(url)
+    else:
+        return date_of_links((pages,url),2)
 
 
-
-
+    return date_of_links((text,url),2)
 def CounterWords(text, url):
     listofwords = stopWords()
-
     eixos = []
     frequency = {}
     words = re.findall(r"(\b[A-Za-z][a-z]{4,40}\b)", text.lower())
@@ -148,8 +123,6 @@ def CounterWords(text, url):
     # else:
     #     ErroReport(url)
     #     return "There were errors in the process \n check the bug report: /tmp/ReportOfErrors.txt"
-
-
 def DotheGraph(lista, path, url):
     repet = []
     posi = []
@@ -179,18 +152,13 @@ def DotheGraph(lista, path, url):
         return 0
     plt.clf()
     plt.close('all')
-
-
 def log_file(url):
-    c = create_bank("date_of_links.db")
-    c.execute("""CREATE TABLE IF NOT EXISTS logErrors(log text);""")
-    c.execute("""INSERT INTO logErrors(log) VALUES(?)""",[url])
-    c.commit()
-    c.close()
-    return "log file has saved"
-
-
-
+    print("writing log file...")
+    path = "/home/roger/Documents/Pesquisa/logfile_{}".format(datetime.now().ctime())
+    file = open(path,'w')
+    file.write("The url:{} have a small or non-existent string.".format(url))
+    file.close()
+    return "log file saved"
 def testeLink(url):
     headers_agent = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
     try:
@@ -200,22 +168,19 @@ def testeLink(url):
     except Exception as e:
         print("erro ao conectar a URL: {}".format(e))
         return False
-
-
-
 def get_text_from_url(url):
     headers_agent = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
-    soup = BeautifulSoup((urlopen(Request(url, headers=headers_agent)).read()),"html.parser")
-    if is_pdf(soup):
-        print("é pdf")
-        # return get_text_from_pdf(url)
-    # text = "".join([p.text for p in soup.find_all("p")])
-    # if text is None :
-    #     print("URL:{}, possui texto vazio, gravando logFile...".format(url))
-    #     log_file(url)
-    # return date_of_links((text,url),2)
+    try:
+        request=urlopen(Request(url, headers=headers_agent))
+    except Exception as e:
+        return e
+    soup = BeautifulSoup(((request.read()),"html.parser")
+    text = "".join([p.text for p in soup.find_all("p")])
 
-
+    if text is None or len(text)<30 :
+        return log_file(url)
+    else:
+        return date_of_links((text,url),2)
 def returno_date(name,table=None,path="/home/roger/Documents/Pesquisa/"):
     if table is None:
         return "no tables entry"
@@ -226,10 +191,8 @@ def returno_date(name,table=None,path="/home/roger/Documents/Pesquisa/"):
     for linha in c.fetchall():
         itens.append(linha)
     return itens
-
 def create_bank(name,path="/home/roger/Documents/Pesquisa/"):
     return sqlite3.connect(path+name)
-
 def date_of_links(dados,table=None):
     c = create_bank("date_of_links.db")
     if table==1:
@@ -260,12 +223,8 @@ def date_of_links(dados,table=None):
             return e
         c.close()
         return "values successfully inserted in table "
-
-
     else:
         return "chose your data tables"
-
-
 def google_screper_results(termo_pesq,len):
     links_check=[]
     i=0
@@ -289,29 +248,30 @@ def google_screper_results(termo_pesq,len):
         time.sleep(300)
 
     return "ok"
-
-
-
-#print(google_screper_results("deficiencia+visual+mercado+de+trabalho+acessibilidade+inserção","pt"))
-# for url in returno_date('date_of_links.db','date_of_links'):
-#     if not ".pdf" in url[0]:
-#         print(get_text_from_url(url[0]))
-#         print("wait for 5 minutes...")
-#         for i in range(200):
-#             time.sleep(1)
-#             print("{}: seconds".format(i))
-#
-#     else:
-#         print("A url {} é PDF".format(url[0]))
-#         try:
-#             print(get_text_from_pdf(url[0]))
-#         except Exception as e:
-#             print(e)
-#         print("wait for 200 minutes...")
-#         for i in range(200):
-#             time.sleep(1)
-#             print("{}: seconds".format(i))
-
-print(get_text_from_url("http://www.unaerp.br/sici-unaerp/edicoes-anteriores/2004/secao-3/836-o-papel-da-tecnologia-assistiva-na-inclusao-digital-dos-portadores-de-deficiencia-visual/file"))
-
-
+def checklist(word,list_):
+    if word in list_:
+        return True
+    else:
+        False
+# print(google_screper_results("deficiencia+visual+mercado+de+trabalho+acessibilidade+inserção","pt"))
+for url in returno_date('date_of_links.db','date_of_links')[41:]:
+    if checklist('pdf', url[0]) or checklist('file',url[0]):
+        pass
+    #     print("detected pdf file format : {}".format(url[0]))
+    #     get_text_from_pdf(url[0])
+    #     print("wait for 200 seconds...")
+    #     for i in range(100):
+    #         time.sleep(1)
+    #         sys.stdout.write("\r%d%%" % i)
+    #         sys.stdout.flush()
+    elif checklist('docx',url[0]):
+        pass
+    #     log_file(url[0])
+    else:
+        print(url[0])
+        print(get_text_from_url(url[0]))
+        print("wait for 4 minutes...")
+        for i in range(600):
+            time.sleep(1)
+            sys.stdout.write("\r%d%%" % i)
+            sys.stdout.flush()
