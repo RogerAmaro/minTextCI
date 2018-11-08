@@ -1,4 +1,4 @@
-Curadoria Digital para inserção de pessoas combaixa visão no mercado de trabalho
+Curadoria Digital para inserção de pessoas com baixa visão no mercado de trabalho
 
 
 Resumo:
